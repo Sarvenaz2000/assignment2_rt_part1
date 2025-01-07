@@ -140,3 +140,20 @@ This will return the last target coordinates set for the robot based on the late
 #### 4. Stopping the Nodes
 
 To stop the nodes, simply press `Ctrl+C` in the terminal where each node is running. This will terminate the nodes and halt the simulation.
+
+
+**Summary**
+This project implements a ROS-based system for controlling a robot in a Gazebo simulation, using Action Clients and Service Nodes for target coordinate management. The system allows users to set target positions for the robot, retrieve the last target coordinates, and cancel or update goals dynamically.
+
+Key components:
+1. **Action Client Node**: Interacts with the Action Server to send target coordinates, handles user input for goal setting, subscribes  for robot position, and publishes the robot's status.
+2. **Service Node**: Provides a service to fetch the last target coordinates.
+3. **Launch File**: Starts both nodes simultaneously.
+
+The project includes a folder structure with launch files, custom message and service definitions, Python scripts for the nodes, and configuration files for building and managing the package. 
+
+To get started, ensure **ROS Noetic** and **Python 3** are installed, and set up a ROS workspace. Clone both the `assignment_2_2024` package (for the simulation and action server) and this repository, build the workspace, and source it. 
+
+To run the system, first launch the simulation environment with `roslaunch assignment_2_2024 assignment1.launch`, then launch either the C++ or Python version of the nodes. After the nodes are running, you can call the service to retrieve the last target coordinates. To stop the nodes, press `Ctrl+C` in the terminal. 
+
+The communication flow between the Action Client Node and Action Server allows the robot to navigate to specified goals, cancel ongoing tasks, or confirm when a goal is reached, ensuring interactive control over the robot’s movement.
