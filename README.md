@@ -142,7 +142,7 @@ This will return the last target coordinates set for the robot based on the late
 To stop the nodes, simply press `Ctrl+C` in the terminal where each node is running. This will terminate the nodes and halt the simulation.
 
 
-**Summary**
+## Summary
 This project implements a ROS-based system for controlling a robot in a Gazebo simulation, using Action Clients and Service Nodes for target coordinate management. The system allows users to set target positions for the robot, retrieve the last target coordinates, and cancel or update goals dynamically.
 
 Key components:
