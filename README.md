@@ -1,5 +1,6 @@
 # assignment2_rt_part1
-
+**Sarvenaz Ashoori**  
+**ID: 6878764**
 
 **ros assignment2_rt_part1**
 ## Introduction
@@ -121,23 +122,18 @@ This will initialize the robot in the simulation and start the action server, wh
 #### 2. Launch the Action Client Node and Service Node
 
 Once the simulation environment is up and running, you can launch either the **C++** or **Python** version of the nodes. 
-
-#### Running the C++ Version
-To launch the C++ version, run the following command:
-```bash
-roslaunch assignment2_rt_part1 coordinate_control_cpp.launch
 ```
 #### Running the Python Version
 To launch the Python version, use this command:
 ```bash
-roslaunch assignment2_rt_part1 coordinate_control_py.launch
+roslaunch assignment2_rt_part1 assignment2_part1.launch
 ```
 This will start both the Action Client Node and the Service Node at the same time.
 
 #### 3. Running the ROS Service to Retrieve the Last Coordinates
 After the Action Client Node has started, you can fetch the most recent target coordinates by calling the following service:
 ```bash
-rosservice call /get_last_target
+rosservice call /last_target
 ```
 This will return the last target coordinates set for the robot based on the latest user input.
 
