@@ -34,19 +34,19 @@ This node provides a service that:
  - Retrieves the last set target coordinates provided by the user.
 
 Key Features:
- - Listens for service requests on `/get_last_target` and responds with the most recent target coordinates.
+ - Listens for service requests on `/last_target` and responds with the most recent target coordinates.
  - Ensures consistency with the Action Client Node by utilizing shared parameters.
  ### Folder and File Structure
 
 - **`/launch`**: Contains the launch files.
-    - `coordinate_control_py.launch`: Launches both nodes simultaneously for the Python version.
+    - `assignment2_part1.launch`: Launches both nodes simultaneously for the Python version.
 
 - **`/msg`**: Holds custom message definitions.
-    - `robot_status.msg`: Defines a custom message to publish the robot's position and velocity.
+    - `last_target.msg`: Defines a custom message to publish the robot's position and velocity.
 
 - **`/scripts`**: Includes Python scripts for the nodes.
     - `action_client_node.py`: Python script for the action client node.
-    - `service_node.py`: Python script for the service node.
+    - `target_service_node.py`: Python script for the service node.
 
 - **`/srv`**: Contains custom service definitions.
     - `get_last_target.srv`: Defines the service for retrieving the last set target coordinates.
