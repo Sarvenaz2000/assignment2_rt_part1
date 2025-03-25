@@ -1,0 +1,271 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>action_client_node &mdash; assignment2_rt_part1 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=eafc0fe6" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=359c27e9"></script>
+      <script src="../_static/doctools.js?v=888ff710"></script>
+      <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            assignment2_rt_part1
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../action_client_node.html">Action Client Node</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../target_service_node.html">Target Service Node</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">assignment2_rt_part1</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">action_client_node</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for action_client_node</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">.. module:: action_client_node</span>
+<span class="sd">   :platform: ROS</span>
+<span class="sd">   :synopsis: ROS action client node for robot navigation control</span>
+
+<span class="sd">.. moduleauthor:: Sarvenaz Ashoori</span>
+
+<span class="sd">This node provides interactive control for sending navigation goals to a robot via actionlib.</span>
+<span class="sd">It continuously monitors and publishes the robot&#39;s current position and velocity,</span>
+<span class="sd">and allows real-time goal cancellation through user input.</span>
+
+<span class="sd">Subscribes to:</span>
+<span class="sd">    - /odom (nav_msgs/Odometry): Receives the robot&#39;s position and velocity updates</span>
+
+<span class="sd">Publishes to:</span>
+<span class="sd">    - /robot_status (assignment2_part1/LastTarget): Publishes the robot&#39;s current state</span>
+
+<span class="sd">Action Clients:</span>
+<span class="sd">    - /reaching_goal (assignment_2_2024/PlanningAction): Action interface for goal management</span>
+
+<span class="sd">Dependencies:</span>
+<span class="sd">    - assignment_2_2024 package</span>
+<span class="sd">    - assignment2_part1 package</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">rospy</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">actionlib</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">assignment_2_2024.msg</span><span class="w"> </span><span class="kn">import</span> <span class="n">PlanningAction</span><span class="p">,</span> <span class="n">PlanningGoal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nav_msgs.msg</span><span class="w"> </span><span class="kn">import</span> <span class="n">Odometry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">assignment2_part1.msg</span><span class="w"> </span><span class="kn">import</span> <span class="n">LastTarget</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">actionlib_msgs.msg</span><span class="w"> </span><span class="kn">import</span> <span class="n">GoalStatus</span>
+
+<span class="c1"># Global state variables</span>
+<span class="n">current_x</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1">#: Current x position of the robot (meters)</span>
+<span class="n">current_y</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1">#: Current y position of the robot (meters)</span>
+<span class="n">vel_x</span> <span class="o">=</span> <span class="mf">0.0</span>      <span class="c1">#: Current linear velocity in x direction (m/s)</span>
+<span class="n">vel_z</span> <span class="o">=</span> <span class="mf">0.0</span>      <span class="c1">#: Current angular velocity around z-axis (rad/s)</span>
+<span class="n">goal_active</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1">#: Flag indicating if a goal is currently active</span>
+<span class="n">status_pub</span> <span class="o">=</span> <span class="kc">None</span>    <span class="c1">#: Publisher for robot status messages</span>
+
+<div class="viewcode-block" id="feedback_callback"><a class="viewcode-back" href="../action_client_node.html#action_client_node.feedback_callback">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">feedback_callback</span><span class="p">(</span><span class="n">feedback</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Processes feedback from the action server.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        feedback (PlanningFeedback): Contains status messages about goal progress.</span>
+<span class="sd">        </span>
+<span class="sd">    Note:</span>
+<span class="sd">        Logs a message when the target is reached and provides user instructions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">feedback</span><span class="o">.</span><span class="n">stat</span> <span class="o">==</span> <span class="s2">&quot;Target reached!&quot;</span><span class="p">:</span>
+        <span class="n">rospy</span><span class="o">.</span><span class="n">loginfo</span><span class="p">(</span><span class="s2">&quot;Goal successfully reached! Press &#39;Enter&#39; to continue...&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="odom_callback"><a class="viewcode-back" href="../action_client_node.html#action_client_node.odom_callback">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">odom_callback</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Updates and publishes the robot&#39;s current state from odometry data.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        msg (Odometry): Contains the robot&#39;s latest pose and twist information.</span>
+<span class="sd">        </span>
+<span class="sd">    Publishes:</span>
+<span class="sd">        Updates the /robot_status topic with position and velocity data.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">current_x</span><span class="p">,</span> <span class="n">current_y</span><span class="p">,</span> <span class="n">vel_x</span><span class="p">,</span> <span class="n">vel_z</span>
+    
+    <span class="c1"># Update global position and velocity variables</span>
+    <span class="n">current_x</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">pose</span><span class="o">.</span><span class="n">pose</span><span class="o">.</span><span class="n">position</span><span class="o">.</span><span class="n">x</span>
+    <span class="n">current_y</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">pose</span><span class="o">.</span><span class="n">pose</span><span class="o">.</span><span class="n">position</span><span class="o">.</span><span class="n">y</span>
+    <span class="n">vel_x</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">twist</span><span class="o">.</span><span class="n">twist</span><span class="o">.</span><span class="n">linear</span><span class="o">.</span><span class="n">x</span>
+    <span class="n">vel_z</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">twist</span><span class="o">.</span><span class="n">twist</span><span class="o">.</span><span class="n">angular</span><span class="o">.</span><span class="n">z</span>
+    
+    <span class="c1"># Publish status message</span>
+    <span class="n">status_msg</span> <span class="o">=</span> <span class="n">LastTarget</span><span class="p">()</span>
+    <span class="n">status_msg</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">current_x</span>
+    <span class="n">status_msg</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">current_y</span>
+    <span class="n">status_msg</span><span class="o">.</span><span class="n">vel_x</span> <span class="o">=</span> <span class="n">vel_x</span>
+    <span class="n">status_msg</span><span class="o">.</span><span class="n">vel_z</span> <span class="o">=</span> <span class="n">vel_z</span>
+    <span class="n">status_pub</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="n">status_msg</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="cancel_current_goal"><a class="viewcode-back" href="../action_client_node.html#action_client_node.cancel_current_goal">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">cancel_current_goal</span><span class="p">(</span><span class="n">ac</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cancels the active goal if requested by the user.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        ac (SimpleActionClient): The active action client instance.</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        bool: True if cancellation was successful, False otherwise.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">goal_active</span>
+    <span class="k">if</span> <span class="n">goal_active</span><span class="p">:</span>
+        <span class="n">ac</span><span class="o">.</span><span class="n">cancel_goal</span><span class="p">()</span>
+        <span class="n">goal_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">rospy</span><span class="o">.</span><span class="n">loginfo</span><span class="p">(</span><span class="s2">&quot;Goal cancellation requested.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="get_user_coordinates"><a class="viewcode-back" href="../action_client_node.html#action_client_node.get_user_coordinates">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">get_user_coordinates</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Handles user input for target coordinates with validation.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple: (x, y) coordinates if valid, None if input is invalid.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">target_x</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Enter target x coordinate: &quot;</span><span class="p">))</span>
+        <span class="n">target_y</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Enter target y coordinate: &quot;</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">target_x</span><span class="p">,</span> <span class="n">target_y</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="n">rospy</span><span class="o">.</span><span class="n">logwarn</span><span class="p">(</span><span class="s2">&quot;Invalid input! Please enter numeric values only.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="action_client_node"><a class="viewcode-back" href="../action_client_node.html#action_client_node.action_client_node">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">action_client_node</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Main node function managing the action client lifecycle.</span>
+<span class="sd">    </span>
+<span class="sd">    Initializes ROS components, handles user interaction, and manages goal states.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">goal_active</span><span class="p">,</span> <span class="n">status_pub</span>
+    
+    <span class="n">rospy</span><span class="o">.</span><span class="n">init_node</span><span class="p">(</span><span class="s1">&#39;action_client_node&#39;</span><span class="p">)</span>
+    
+    <span class="c1"># Initialize action client</span>
+    <span class="n">ac</span> <span class="o">=</span> <span class="n">actionlib</span><span class="o">.</span><span class="n">SimpleActionClient</span><span class="p">(</span><span class="s1">&#39;/reaching_goal&#39;</span><span class="p">,</span> <span class="n">PlanningAction</span><span class="p">)</span>
+    <span class="n">rospy</span><span class="o">.</span><span class="n">loginfo</span><span class="p">(</span><span class="s2">&quot;Connecting to action server...&quot;</span><span class="p">)</span>
+    <span class="n">ac</span><span class="o">.</span><span class="n">wait_for_server</span><span class="p">()</span>
+    <span class="n">rospy</span><span class="o">.</span><span class="n">loginfo</span><span class="p">(</span><span class="s2">&quot;Action server connected!&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Setup ROS communications</span>
+    <span class="n">rospy</span><span class="o">.</span><span class="n">Subscriber</span><span class="p">(</span><span class="s1">&#39;/odom&#39;</span><span class="p">,</span> <span class="n">Odometry</span><span class="p">,</span> <span class="n">odom_callback</span><span class="p">)</span>
+    <span class="n">status_pub</span> <span class="o">=</span> <span class="n">rospy</span><span class="o">.</span><span class="n">Publisher</span><span class="p">(</span><span class="s1">&#39;/robot_status&#39;</span><span class="p">,</span> <span class="n">LastTarget</span><span class="p">,</span> <span class="n">queue_size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    
+    <span class="c1"># Main interaction loop</span>
+    <span class="k">while</span> <span class="ow">not</span> <span class="n">rospy</span><span class="o">.</span><span class="n">is_shutdown</span><span class="p">():</span>
+        <span class="n">coords</span> <span class="o">=</span> <span class="n">get_user_coordinates</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">coords</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+            
+        <span class="n">target_x</span><span class="p">,</span> <span class="n">target_y</span> <span class="o">=</span> <span class="n">coords</span>
+        
+        <span class="c1"># Create and send new goal</span>
+        <span class="n">goal</span> <span class="o">=</span> <span class="n">PlanningGoal</span><span class="p">()</span>
+        <span class="n">goal</span><span class="o">.</span><span class="n">target_pose</span><span class="o">.</span><span class="n">pose</span><span class="o">.</span><span class="n">position</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">target_x</span>
+        <span class="n">goal</span><span class="o">.</span><span class="n">target_pose</span><span class="o">.</span><span class="n">pose</span><span class="o">.</span><span class="n">position</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">target_y</span>
+        <span class="n">rospy</span><span class="o">.</span><span class="n">loginfo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Sending new goal: (</span><span class="si">{</span><span class="n">target_x</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">target_y</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+        
+        <span class="n">ac</span><span class="o">.</span><span class="n">send_goal</span><span class="p">(</span><span class="n">goal</span><span class="p">,</span> <span class="n">feedback_cb</span><span class="o">=</span><span class="n">feedback_callback</span><span class="p">)</span>
+        <span class="n">goal_active</span> <span class="o">=</span> <span class="kc">True</span>
+        
+        <span class="c1"># Goal monitoring loop</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="n">rospy</span><span class="o">.</span><span class="n">is_shutdown</span><span class="p">()</span> <span class="ow">and</span> <span class="n">goal_active</span><span class="p">:</span>
+            <span class="n">state</span> <span class="o">=</span> <span class="n">ac</span><span class="o">.</span><span class="n">get_state</span><span class="p">()</span>
+            
+            <span class="c1"># Check for goal completion</span>
+            <span class="k">if</span> <span class="n">state</span> <span class="ow">in</span> <span class="p">[</span><span class="n">GoalStatus</span><span class="o">.</span><span class="n">SUCCEEDED</span><span class="p">,</span> <span class="n">GoalStatus</span><span class="o">.</span><span class="n">ABORTED</span><span class="p">,</span> <span class="n">GoalStatus</span><span class="o">.</span><span class="n">REJECTED</span><span class="p">]:</span>
+                <span class="n">goal_active</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="k">break</span>
+                
+            <span class="c1"># Check for cancellation request</span>
+            <span class="n">user_input</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Enter &#39;cancel&#39; to abort current goal or press Enter to continue: &quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">user_input</span> <span class="o">==</span> <span class="s1">&#39;cancel&#39;</span><span class="p">:</span>
+                <span class="n">cancel_current_goal</span><span class="p">(</span><span class="n">ac</span><span class="p">)</span>
+                <span class="k">break</span>
+                
+            <span class="n">rospy</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># Prevent CPU overload</span></div>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">action_client_node</span><span class="p">()</span>
+    <span class="k">except</span> <span class="n">rospy</span><span class="o">.</span><span class="n">ROSInterruptException</span><span class="p">:</span>
+        <span class="n">rospy</span><span class="o">.</span><span class="n">loginfo</span><span class="p">(</span><span class="s2">&quot;Node shutdown requested.&quot;</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Sarvenaz Ashoori.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
